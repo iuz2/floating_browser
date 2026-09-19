@@ -31,8 +31,9 @@ jobs:
       - name: 🚀 Build APK Release
         run: flutter build apk --release --android-skip-build-dependency-validation
 
-      - name: 📤 Upload File APK Ke GitHub
+      - name: 📤 Upload APK Mentah
         uses: actions/upload-artifact@v4
         with:
-          name: floating-browser-apk
+          name: app-release.apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          compression-level: 0
