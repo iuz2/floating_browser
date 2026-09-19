@@ -19,9 +19,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 🤖 Setup Android SDK Platform 37
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platforms;android-37" "build-tools;37.0.0" || true
+      - name: 🤖 Setup Android SDK 34
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 8512546
 
       - name: 💙 Setup Flutter
         uses: subosito/flutter-action@v2
