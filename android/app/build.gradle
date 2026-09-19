@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace "com.example.floating_browser"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
 
     defaultConfig {
         applicationId "com.example.floating_browser"
