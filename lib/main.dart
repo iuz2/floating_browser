@@ -21,19 +21,59 @@ class FloatingBrowserWindow extends StatefulWidget {
 }
 
 class _FloatingBrowserWindowState extends State<FloatingBrowserWindow> {
-  bool isMinimized = false;
   late final WebViewController controller;
-  final String targetUrl = "http://127.0.0.1:8080"; 
+  final String targetUrl = "http://127.0.0.1:8080";
+
+  bool isMinimized = false;
+  bool isMaximized = false;
+  bool isLoading = true;
+  bool hasError = false;
+  String errorMessage = "";
+
+  double currentWidth = 360;
+  double currentHeight = 520;
+
+  double posX = 0;
+  double posY = 0;
 
   @override
   void initState() {
     super.initState();
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageStarted: (String url) {
+            setState(() {
+              isLoading = true;
+              hasError = false;
+            });
+          },
+          onPageFinished: (String url) {
+            setState(() {
+              isLoading = false;
+            });
+          },
+          onWebResourceError: (WebResourceError error) {
+            setState(() {
+              isLoading = false;
+              hasError = true;
+              errorMessage = error.description;
+            });
+          },
+        ),
+      )
       ..loadRequest(Uri.parse(targetUrl));
   }
 
-  @override
+  void _updateOverlaySize(double width, double height) {
+    setState(() {
+      currentWidth = width;
+      currentHeight = height;
+    });
+    FlutterOverlayWindow.resizeOverlay(width.toInt(), height.toInt(), true);
+  }
+@override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
@@ -51,69 +91,159 @@ class _FloatingBrowserWindowState extends State<FloatingBrowserWindow> {
           ],
         ),
         clipBehavior: Clip.antiAlias,
-        child: Column(
+        child: Stack(
           children: [
-            GestureDetector(
-              onPanUpdate: (details) {
-                FlutterOverlayWindow.moveOverlay(
-                  OverlayPosition(details.globalPosition.dx, details.globalPosition.dy),
-                );
-              },
-              child: Container(
-                height: 38,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                color: const Color(0xFF2D2D2D),
-                child: Row(
-                  children: [
-                    const Icon(Icons.language, size: 16, color: Colors.blueAccent),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        "Localhost Viewer",
-                        style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+            Column(
+              children: [
+                GestureDetector(
+                  onPanUpdate: (details) {
+                    posX += details.delta.dx;
+                    posY += details.delta.dy;
+                    FlutterOverlayWindow.moveOverlay(
+                      OverlayPosition(posX, posY),
+                    );
+                  },
+                  child: Container(
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    color: const Color(0xFF2D2D2D),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.language, size: 18, color: Colors.blueAccent),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            "Localhost Viewer",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.refresh, size: 18, color: Colors.white70),
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          padding: EdgeInsets.zero,
+                          onPressed: () {
+                            controller.reload();
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            isMinimized ? Icons.aspect_ratio : Icons.remove,
+                            size: 18,
+                            color: Colors.white70,
+                          ),
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          padding: EdgeInsets.zero,
+                          onPressed: () {
+                            setState(() {
+                              isMinimized = !isMinimized;
+                              isMaximized = false;
+                            });
+                            if (isMinimized) {
+                              _updateOverlaySize(180, 48);
+                            } else {
+                              _updateOverlaySize(360, 520);
+                            }
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            isMaximized ? Icons.close_fullscreen : Icons.open_in_full,
+                            size: 16,
+                            color: Colors.white70,
+                          ),
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          padding: EdgeInsets.zero,
+                          onPressed: () {
+                            setState(() {
+                              isMaximized = !isMaximized;
+                              isMinimized = false;
+                            });
+if (isMaximized) {
+                              _updateOverlaySize(380, 680);
+                            } else {
+                              _updateOverlaySize(360, 520);
+                            }
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18, color: Colors.redAccent),
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          padding: EdgeInsets.zero,
+                          onPressed: () => FlutterOverlayWindow.closeOverlay(),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.refresh, size: 16, color: Colors.white70),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () => controller.reload(),
-                    ),
-                    const SizedBox(width: 10),
-                    IconButton(
-                      icon: Icon(
-                        isMinimized ? Icons.aspect_ratio : Icons.remove,
-                        size: 16,
-                        color: Colors.white70,
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () async {
-                        setState(() {
-                          isMinimized = !isMinimized;
-                        });
-                        if (isMinimized) {
-await FlutterOverlayWindow.resizeOverlay(160, 40, true);
-                        } else {
-                          await FlutterOverlayWindow.resizeOverlay(360, 520, true);
-                        }
-                      },
-                    ),
-                    const SizedBox(width: 10),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 16, color: Colors.redAccent),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () => FlutterOverlayWindow.closeOverlay(),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+                if (!isMinimized)
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        WebViewWidget(controller: controller),
+                        if (isLoading)
+                          const Center(
+                            child: CircularProgressIndicator(color: Colors.blueAccent),
+                          ),
+                        if (hasError)
+                          Container(
+                            color: const Color(0xFF1E1E1E),
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.wifi_off, size: 40, color: Colors.orangeAccent),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  "Gagal Terhubung ke Localhost",
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Pastikan server 'run-beres' aktif di port 8080.\n($errorMessage)",
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.white60, fontSize: 11),
+                                ),
+                                const SizedBox(height: 12),
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+                                  onPressed: () => controller.reload(),
+                                  icon: const Icon(Icons.refresh, size: 16, color: Colors.white),
+                                  label: const Text("Coba Lagi", style: TextStyle(color: Colors.white)),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
-            if (!isMinimized)
-              Expanded(
-                child: WebViewWidget(controller: controller),
+            if (!isMinimized && !isMaximized)
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    double newWidth = (currentWidth + details.delta.dx).clamp(200.0, 500.0);
+                    double newHeight = (currentHeight + details.delta.dy).clamp(150.0, 900.0);
+                    _updateOverlaySize(newWidth, newHeight);
+                  },
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    color: Colors.transparent,
+                    child: const Icon(
+                      Icons.south_east,
+                      size: 14,
+                      color: Colors.white38,
+                    ),
+                  ),
+                ),
               ),
           ],
         ),
@@ -129,8 +259,7 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  @override
+@override
   Widget build(BuildContext context) {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -154,9 +283,9 @@ class HomeScreen extends StatelessWidget {
     }
 
     await FlutterOverlayWindow.showOverlay(
-      enableDrag: true,
-      height: 1000,
-      width: 720,
+      enableDrag: false,
+      height: 520,
+      width: 360,
       alignment: OverlayAlignment.center,
       flag: OverlayFlag.defaultFlag,
       visibility: NotificationVisibility.visibilitySecret,
