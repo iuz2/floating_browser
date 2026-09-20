@@ -1,0 +1,25 @@
+{
+  "total_count": 1,
+  "artifacts": [
+    {
+      "id": 10588138313,
+      "node_id": "MDg6QXJ0aWZhY3QxMDU4ODEzODMxMw==",
+      "name": "floating-browser-apk",
+      "size_in_bytes": 21215331,
+      "url": "https://api.github.com/repos/iuz2/floating_browser/actions/artifacts/10588138313",
+      "archive_download_url": "https://api.github.com/repos/iuz2/floating_browser/actions/artifacts/10588138313/zip",
+      "expired": false,
+      "digest": "sha256:6fa92addcb22c35b59fbce2852a9cf754ad776b5f1cc2b7a6e4f902ba2185555",
+      "created_at": "2026-09-19T16:55:47Z",
+      "updated_at": "2026-09-19T16:55:47Z",
+      "expires_at": "2026-12-18T16:50:58Z",
+      "workflow_run": {
+        "id": 35456246377,
+        "repository_id": 1377318739,
+        "head_repository_id": 1377318739,
+        "head_branch": "main",
+        "head_sha": "96af889000552f798fd7b1eae100938f10221808"
+      }
+    }
+  ]
+}
