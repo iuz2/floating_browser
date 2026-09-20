@@ -22,13 +22,14 @@ class FloatingBrowserWindow extends StatefulWidget {
 
 class _FloatingBrowserWindowState extends State<FloatingBrowserWindow> {
   late final WebViewController controller;
-  final String targetUrl = "http://127.0.0.1:8080";
+  final TextEditingController urlController = TextEditingController(text: "http://127.0.0.1:8080");
 
   bool isMinimized = false;
   bool isMaximized = false;
   bool isLoading = true;
   bool hasError = false;
   String errorMessage = "";
+  bool showUrlBar = false;
 
   double currentWidth = 360;
   double currentHeight = 520;
@@ -41,12 +42,14 @@ class _FloatingBrowserWindowState extends State<FloatingBrowserWindow> {
     super.initState();
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent("Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Mobile Safari/537.36")
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {
             setState(() {
               isLoading = true;
               hasError = false;
+              urlController.text = url;
             });
           },
           onPageFinished: (String url) {
@@ -58,12 +61,15 @@ class _FloatingBrowserWindowState extends State<FloatingBrowserWindow> {
             setState(() {
               isLoading = false;
               hasError = true;
-              errorMessage = error.description;
+              errorMessage = "[Code ${error.errorCode}] ${error.description}";
             });
           },
         ),
       )
-      ..loadRequest(Uri.parse(targetUrl));
+      ..setOnConsoleMessage((JavaScriptMessage message) {
+        debugPrint("WebView Console: ${message.message}");
+      })
+      ..loadRequest(Uri.parse(urlController.text));
   }
 
   void _updateOverlaySize(double width, double height) {
@@ -73,7 +79,16 @@ class _FloatingBrowserWindowState extends State<FloatingBrowserWindow> {
     });
     FlutterOverlayWindow.resizeOverlay(width.toInt(), height.toInt(), true);
   }
-@override
+
+  void _loadUrl(String inputUrl) {
+    String formattedUrl = inputUrl.trim();
+    if (!formattedUrl.startsWith("http://") && !formattedUrl.startsWith("https://")) {
+      formattedUrl = "http://$formattedUrl";
+    }
+    controller.loadRequest(Uri.parse(formattedUrl));
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
@@ -95,6 +110,7 @@ class _FloatingBrowserWindowState extends State<FloatingBrowserWindow> {
           children: [
             Column(
               children: [
+                // HEADER BAR
                 GestureDetector(
                   onPanUpdate: (details) {
                     posX += details.delta.dx;
@@ -105,38 +121,48 @@ class _FloatingBrowserWindowState extends State<FloatingBrowserWindow> {
                   },
                   child: Container(
                     height: 40,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+padding: const EdgeInsets.symmetric(horizontal: 6),
                     color: const Color(0xFF2D2D2D),
                     child: Row(
                       children: [
-                        const Icon(Icons.language, size: 18, color: Colors.blueAccent),
-                        const SizedBox(width: 8),
-                        const Expanded(
+                        IconButton(
+                          icon: Icon(
+                            showUrlBar ? Icons.language : Icons.edit,
+                            size: 16,
+                            color: Colors.blueAccent,
+                          ),
+                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                          padding: EdgeInsets.zero,
+                          onPressed: () {
+                            setState(() {
+                              showUrlBar = !showUrlBar;
+                            });
+                          },
+                        ),
+                        Expanded(
                           child: Text(
-                            "Localhost Viewer",
-                            style: TextStyle(
+                            urlController.text,
+                            style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.refresh, size: 18, color: Colors.white70),
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          icon: const Icon(Icons.refresh, size: 16, color: Colors.white70),
+                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                           padding: EdgeInsets.zero,
-                          onPressed: () {
-                            controller.reload();
-                          },
+                          onPressed: () => controller.reload(),
                         ),
                         IconButton(
                           icon: Icon(
                             isMinimized ? Icons.aspect_ratio : Icons.remove,
-                            size: 18,
+                            size: 16,
                             color: Colors.white70,
                           ),
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                           padding: EdgeInsets.zero,
                           onPressed: () {
                             setState(() {
@@ -156,14 +182,14 @@ class _FloatingBrowserWindowState extends State<FloatingBrowserWindow> {
                             size: 16,
                             color: Colors.white70,
                           ),
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                           padding: EdgeInsets.zero,
                           onPressed: () {
                             setState(() {
                               isMaximized = !isMaximized;
                               isMinimized = false;
                             });
-if (isMaximized) {
+                            if (isMaximized) {
                               _updateOverlaySize(380, 680);
                             } else {
                               _updateOverlaySize(360, 520);
@@ -171,8 +197,8 @@ if (isMaximized) {
                           },
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close, size: 18, color: Colors.redAccent),
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          icon: const Icon(Icons.close, size: 16, color: Colors.redAccent),
+                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                           padding: EdgeInsets.zero,
                           onPressed: () => FlutterOverlayWindow.closeOverlay(),
                         ),
@@ -180,6 +206,42 @@ if (isMaximized) {
                     ),
                   ),
                 ),
+// INPUT URL BAR (OPSIONAL DIBUKA)
+                if (showUrlBar && !isMinimized)
+                  Container(
+                    color: const Color(0xFF222222),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: urlController,
+                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                            decoration: const InputDecoration(
+                              hintText: "Masukkan URL (misal 127.0.0.1:8080)",
+                              hintStyle: TextStyle(color: Colors.white38, fontSize: 12),
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              border: OutlineInputBorder(),
+                            ),
+                            onSubmitted: _loadUrl,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueAccent,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            minimumSize: const Size(40, 32),
+                          ),
+                          onPressed: () => _loadUrl(urlController.text),
+                          child: const Text("Go", style: TextStyle(color: Colors.white, fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // KONTEN UTAMA
                 if (!isMinimized)
                   Expanded(
                     child: Stack(
@@ -199,12 +261,12 @@ if (isMaximized) {
                                 const Icon(Icons.wifi_off, size: 40, color: Colors.orangeAccent),
                                 const SizedBox(height: 8),
                                 const Text(
-                                  "Gagal Terhubung ke Localhost",
+                                  "Gagal Memuat Halaman",
                                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  "Pastikan server 'run-beres' aktif di port 8080.\n($errorMessage)",
+                                  errorMessage,
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(color: Colors.white60, fontSize: 11),
                                 ),
@@ -223,6 +285,7 @@ if (isMaximized) {
                   ),
               ],
             ),
+// HANDLE RESIZE
             if (!isMinimized && !isMaximized)
               Positioned(
                 right: 0,
@@ -259,7 +322,8 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-@override
+
+  @override
   Widget build(BuildContext context) {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
